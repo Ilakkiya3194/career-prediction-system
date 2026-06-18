@@ -7,6 +7,7 @@ import streamlit as st
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import GradientBoostingClassifier
 
 # =====================================
 # CONFIG
@@ -237,16 +238,6 @@ CREATE TABLE IF NOT EXISTS users (
 )
 conn.commit()
 
-# =========================
-# MODEL
-# =========================
-from sklearn.ensemble import GradientBoostingClassifier
-
-model = GradientBoostingClassifier(
-    n_estimators=100,
-    learning_rate=0.1,
-    random_state=42
-)
 
 # =========================
 # SESSION STATE
@@ -263,6 +254,8 @@ if "encoders" not in st.session_state:
     st.session_state.encoders = {}
 if "ready" not in st.session_state:
     st.session_state.ready = False
+if "model" not in st.session_state:
+    st.session_state.model = None
 
 
 # =========================
@@ -371,17 +364,16 @@ def upload_page():
         st.subheader("♻️ Duplicates")
         st.write(df.duplicated().sum())
 
-        # ==============================
-        # 🧹 CLEAN DATA
-        # ==============================
+        # Corrected Indentation below
         df = df.dropna()
         df = df.drop_duplicates()
 
+        for col in ["Name", "Student Name", "Full Name"]:
+            if col in df.columns:
+                df = df.drop(columns=[col])
+
         st.session_state.df = df
-
-        st.subheader("🧹 Clean Data")
-        st.dataframe(df)
-
+        
         # ============================================================
         # 🤖 TRAIN MODEL 
         # ============================================================
@@ -406,11 +398,18 @@ def upload_page():
                 X, y, test_size=0.2, random_state=42
             )
 
-            model.fit(X_train, y_train)
-            pred = model.predict(X_test)
-
+            # Initialize and store model inside state to maintain weights across page reloads
+            clf = GradientBoostingClassifier(
+                n_estimators=100,
+                learning_rate=0.1,
+                random_state=42
+            )
+            clf.fit(X_train, y_train)
+            st.session_state.model = clf
+            
+            pred = clf.predict(X_test)
             acc = accuracy_score(y_test, pred)
-            model_name = type(model).__name__
+            model_name = type(clf).__name__
 
             st.subheader("🤖 Model Training Results")
 
@@ -465,9 +464,10 @@ def predict_page():
 
     df = st.session_state.df
     encoders = st.session_state.encoders
+    model = st.session_state.model
 
-    if df is None:
-        st.warning("Upload dataset first")
+    if df is None or model is None:
+        st.warning("Upload dataset first and allow model training to complete.")
         return
 
     if st.button("⬅️ Back"):
@@ -515,17 +515,9 @@ def predict_page():
                         "Age": age,
                         "GPA": gpa,
                         "Major": encoders["Major"].transform([major])[0],
-                        "Interested Domain": encoders["Interested Domain"].transform(
-                            [domain]
-                        )[
-                            0
-                        ],
-                        "Projects": encoders["Projects"].transform([projects])[
-                            0
-                        ],
-                        "Python": encoders["Python"].transform([python_skill])[
-                            0
-                        ],
+                        "Interested Domain": encoders["Interested Domain"].transform([domain])[0],
+                        "Projects": encoders["Projects"].transform([projects])[0],
+                        "Python": encoders["Python"].transform([python_skill])[0],
                         "SQL": encoders["SQL"].transform([sql_skill])[0],
                         "Java": encoders["Java"].transform([java_skill])[0],
                     }

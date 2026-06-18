@@ -364,7 +364,7 @@ def upload_page():
         st.subheader("♻️ Duplicates")
         st.write(df.duplicated().sum())
 
-        # Corrected Indentation below
+        # Clean Dataset
         df = df.dropna()
         df = df.drop_duplicates()
 
@@ -383,10 +383,11 @@ def upload_page():
             df_encoded = df.copy()
             encoders = {}
 
+            # Target all non-numerical columns effectively
             for col in df_encoded.columns:
-                if df_encoded[col].dtype == "object":
+                if not pd.api.types.is_numeric_dtype(df_encoded[col]):
                     le = LabelEncoder()
-                    df_encoded[col] = le.fit_transform(df_encoded[col])
+                    df_encoded[col] = le.fit_transform(df_encoded[col].astype(str))
                     encoders[col] = le
 
             st.session_state.encoders = encoders
@@ -398,7 +399,7 @@ def upload_page():
                 X, y, test_size=0.2, random_state=42
             )
 
-            # Initialize and store model inside state to maintain weights across page reloads
+            # Initialize and store model inside state
             clf = GradientBoostingClassifier(
                 n_estimators=100,
                 learning_rate=0.1,

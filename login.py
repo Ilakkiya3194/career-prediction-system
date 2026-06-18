@@ -364,16 +364,20 @@ def upload_page():
         st.subheader("♻️ Duplicates")
         st.write(df.duplicated().sum())
 
-        # Clean Dataset
+       # Clean Dataset
         df = df.dropna()
         df = df.drop_duplicates()
 
         for col in ["Name", "Student Name", "Full Name"]:
-            if col in df.columns:
-                df = df.drop(columns=[col])
+           if col in df.columns:
+              df = df.drop(columns=[col])
 
         st.session_state.df = df
-        
+
+      # ADD THIS
+        st.subheader("🧹 Clean Data")
+        st.write("Shape After Cleaning:", df.shape)
+        st.dataframe(df.head(20))
         # ============================================================
         # 🤖 TRAIN MODEL 
         # ============================================================
